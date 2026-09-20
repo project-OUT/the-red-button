@@ -29,7 +29,7 @@ export function StoryStage({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="relative min-h-dvh flex flex-col bg-[radial-gradient(ellipse_at_50%_22%,#14141f_0%,#08080f_70%)]">
+    <div className="relative h-full overflow-hidden flex flex-col bg-[radial-gradient(ellipse_at_50%_22%,#14141f_0%,#08080f_70%)]">
       <div className="flex justify-between items-center px-6 pt-5 text-sm tracking-wide text-[#6b7280]">
         <span>EXP. NO. 001</span>
         <span>

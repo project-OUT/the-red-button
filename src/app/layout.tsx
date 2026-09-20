@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className={`${pressStart.variable} ${vt323.variable}`}>
-      <body className="min-h-dvh bg-black flex justify-center">
-        <div className="w-full max-w-[430px] min-h-dvh relative bg-[#08080f] text-[#e5e5e5] font-body overflow-x-hidden">
+      <body className="h-dvh overflow-hidden bg-black flex justify-center">
+        <div className="w-full max-w-[430px] h-full relative bg-[#08080f] text-[#e5e5e5] font-body overflow-hidden">
           {children}
         </div>
       </body>

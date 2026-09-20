@@ -71,7 +71,7 @@ export function ButtonStage() {
 
   return (
     <div
-      className={`relative min-h-dvh flex flex-col bg-[#08080f] ${shake ? "rb-shake" : ""}`}
+      className={`relative h-full overflow-hidden flex flex-col bg-[#08080f] ${shake ? "rb-shake" : ""}`}
       style={{
         backgroundImage:
           "radial-gradient(ellipse 340px 380px at 50% 62%, rgba(120,20,20,0.22) 0%, rgba(10,10,16,0) 70%)",

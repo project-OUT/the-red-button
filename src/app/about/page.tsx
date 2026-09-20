@@ -3,7 +3,7 @@ import { DialogBox } from "@/components/DialogBox";
 
 export default function AboutPage() {
   return (
-    <div className="min-h-dvh flex flex-col bg-[radial-gradient(ellipse_at_50%_25%,#14141f_0%,#08080f_70%)]">
+    <div className="h-full overflow-hidden flex flex-col bg-[radial-gradient(ellipse_at_50%_25%,#14141f_0%,#08080f_70%)]">
       <div className="flex justify-between items-center px-6 pt-5 text-sm tracking-wide text-[#6b7280]">
         <span>ABOUT</span>
         <Link href="/" className="hover:text-[#ef4444]">
