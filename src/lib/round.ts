@@ -1,45 +1,63 @@
 import type { RoundWindow } from "./types";
 
-function atTime(date: Date, h: number, m: number, s: number, ms = 0): Date {
-  const d = new Date(date);
-  d.setHours(h, m, s, ms);
-  return d;
-}
+/** All round boundaries are defined in KST (UTC+9), regardless of the
+ * client or server's own local timezone, so the browser and the server
+ * always agree on which round a given instant belongs to. */
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Monday 00:00 -> Sunday 19:59, results reveal Sunday 20:00. */
+/** Shifts a Date so its UTC getters read as KST wall-clock components. */
+function toKstShifted(date: Date): Date {
+  return new Date(date.getTime() + KST_OFFSET_MS);
+}
+
+function fromKstShifted(kstShifted: Date): Date {
+  return new Date(kstShifted.getTime() - KST_OFFSET_MS);
+}
+
+/** Monday 00:00 -> Sunday 19:59 KST, results reveal Sunday 20:00 KST. */
 export function getRoundWindow(now: Date = new Date()): RoundWindow {
-  const day = now.getDay(); // 0 = Sun .. 6 = Sat
+  const kstNow = toKstShifted(now);
+  const day = kstNow.getUTCDay(); // 0 = Sun .. 6 = Sat, in KST
+
+  const kstMonday = new Date(kstNow);
   const diffToMonday = day === 0 ? 6 : day - 1;
+  kstMonday.setUTCDate(kstNow.getUTCDate() - diffToMonday);
+  kstMonday.setUTCHours(0, 0, 0, 0);
 
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diffToMonday);
-  const periodStart = atTime(monday, 0, 0, 0);
+  const kstSunday = new Date(kstMonday);
+  kstSunday.setUTCDate(kstMonday.getUTCDate() + 6);
 
-  const sunday = new Date(periodStart);
-  sunday.setDate(periodStart.getDate() + 6);
+  const kstPeriodEnd = new Date(kstSunday);
+  kstPeriodEnd.setUTCHours(19, 59, 59, 999);
 
-  const periodEnd = atTime(sunday, 19, 59, 59, 999);
-  const revealAt = atTime(sunday, 20, 0, 0);
+  const kstRevealAt = new Date(kstSunday);
+  kstRevealAt.setUTCHours(20, 0, 0, 0);
 
-  const roundId = `${periodStart.getFullYear()}${pad(periodStart.getMonth() + 1)}${pad(periodStart.getDate())}`;
+  const roundId = `${kstMonday.getUTCFullYear()}${pad(kstMonday.getUTCMonth() + 1)}${pad(kstMonday.getUTCDate())}`;
 
-  return { roundId, periodStart, periodEnd, revealAt };
+  return {
+    roundId,
+    periodStart: fromKstShifted(kstMonday),
+    periodEnd: fromKstShifted(kstPeriodEnd),
+    revealAt: fromKstShifted(kstRevealAt),
+  };
 }
 
 export function isRevealed(window: RoundWindow, now: Date = new Date()): boolean {
   return now.getTime() >= window.revealAt.getTime();
 }
 
-function formatDateTime(d: Date): string {
-  const yy = pad(d.getFullYear() % 100);
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const min = pad(d.getMinutes());
+function formatKstDateTime(instant: Date): string {
+  const k = toKstShifted(instant);
+  const yy = pad(k.getUTCFullYear() % 100);
+  const mm = pad(k.getUTCMonth() + 1);
+  const dd = pad(k.getUTCDate());
+  const hh = pad(k.getUTCHours());
+  const min = pad(k.getUTCMinutes());
   return `${yy}/${mm}/${dd} ${hh}:${min}`;
 }
 
@@ -47,5 +65,5 @@ export function formatRoundPeriod(window: RoundWindow): string {
   const endDisplay = new Date(window.periodEnd);
   endDisplay.setMilliseconds(0);
   endDisplay.setSeconds(0);
-  return `${formatDateTime(window.periodStart)} - ${formatDateTime(endDisplay)}`;
+  return `${formatKstDateTime(window.periodStart)} - ${formatKstDateTime(endDisplay)}`;
 }

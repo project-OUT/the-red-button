@@ -1,47 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DialogBox } from "@/components/DialogBox";
 import { NameCodeFields } from "@/components/NameCodeFields";
 import { ShareRow } from "@/components/ShareRow";
 import { getRoundWindow, isRevealed, formatRoundPeriod } from "@/lib/round";
-import { checkResult } from "@/lib/participation";
-import { getMockStats, pressPercent, getVerdict } from "@/lib/mock-data";
-import type { Participation } from "@/lib/types";
+import { pressPercent, getVerdict } from "@/lib/stats";
+import type { Choice, RoundStats } from "@/lib/types";
 
 type Phase = "gate" | "not_played" | "locked" | "revealed";
+type CheckResultResponse =
+  | { status: "not_played" }
+  | { status: "mismatch" }
+  | { status: "ok"; choice: Choice; revealed: boolean }
+  | { error: string };
 
 export default function ResultPage() {
   const [phase, setPhase] = useState<Phase>("gate");
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [participation, setParticipation] = useState<Participation | null>(
+  const [result, setResult] = useState<{ name: string; choice: Choice } | null>(
     null,
   );
+  const [stats, setStats] = useState<RoundStats | null>(null);
 
   const roundWindow = getRoundWindow();
   const revealed = isRevealed(roundWindow);
   const period = formatRoundPeriod(roundWindow);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    if (phase !== "revealed") return;
+    let cancelled = false;
+    fetch("/api/stats")
+      .then((res) => res.json())
+      .then((data: RoundStats) => {
+        if (!cancelled) setStats(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [phase]);
+
+  const handleSubmit = async () => {
     if (!name.trim() || code.length !== 4) {
       setError("이름과 4자리 코드를 모두 입력해주세요.");
       return;
     }
-    const result = checkResult(roundWindow.roundId, name.trim(), code);
-    if (result.status === "not_played") {
-      setPhase("not_played");
-      return;
-    }
-    if (result.status === "mismatch") {
-      setError("이름 또는 코드가 일치하지 않습니다.");
-      return;
-    }
     setError("");
-    setParticipation(result.participation);
-    setPhase(revealed ? "revealed" : "locked");
+    try {
+      const res = await fetch("/api/check-result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), code }),
+      });
+      const data: CheckResultResponse = await res.json();
+      if ("error" in data) {
+        setError("결과 확인 중 문제가 발생했습니다. 다시 시도해주세요.");
+        return;
+      }
+      if (data.status === "not_played") {
+        setPhase("not_played");
+        return;
+      }
+      if (data.status === "mismatch") {
+        setError("이름 또는 코드가 일치하지 않습니다.");
+        return;
+      }
+      setResult({ name: name.trim(), choice: data.choice });
+      setPhase(data.revealed ? "revealed" : "locked");
+    } catch {
+      setError("결과 확인 중 문제가 발생했습니다. 다시 시도해주세요.");
+    }
   };
 
   return (
@@ -104,8 +136,16 @@ export default function ResultPage() {
           </div>
         )}
 
-        {phase === "revealed" && participation && (
-          <RevealedResult name={participation.name} choice={participation.choice} period={period} />
+        {phase === "revealed" && result && stats && (
+          <RevealedResult
+            name={result.name}
+            choice={result.choice}
+            period={period}
+            stats={stats}
+          />
+        )}
+        {phase === "revealed" && result && !stats && (
+          <DialogBox className="text-center">집계 결과를 불러오는 중...</DialogBox>
         )}
       </div>
 
@@ -126,12 +166,13 @@ function RevealedResult({
   name,
   choice,
   period,
+  stats,
 }: {
   name: string;
-  choice: Participation["choice"];
+  choice: Choice;
   period: string;
+  stats: RoundStats;
 }) {
-  const stats = getMockStats();
   const pct = pressPercent(stats);
   const verdict = getVerdict(choice, stats);
   const isLived = verdict === "LIVED";

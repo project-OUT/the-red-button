@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { DialogBox } from "./DialogBox";
 import { PixelButton } from "./PixelButton";
 import { useTypewriter } from "@/hooks/useTypewriter";
-import { getRoundWindow } from "@/lib/round";
-import { recordChoice } from "@/lib/participation";
 import type { Choice } from "@/lib/types";
 
 function dialogFor(timeLeft: number): string {
@@ -36,13 +34,19 @@ export function ButtonStage() {
   const finish = (choice: Choice) => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    const { roundId } = getRoundWindow();
-    recordChoice(roundId, choice);
     if (choice === "PRESS") {
       setShake(true);
       setFlash(true);
     }
     setConfirmMessage(CONFIRM_MESSAGE[choice]);
+    fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ choice }),
+    }).catch(() => {
+      // Ignored: the result page independently re-checks the vote with
+      // the server, so a dropped request here doesn't strand the user.
+    });
     setTimeout(() => router.push("/result"), CONFIRM_DISPLAY_MS);
   };
 
