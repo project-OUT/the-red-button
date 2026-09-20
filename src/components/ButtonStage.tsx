@@ -16,12 +16,19 @@ function dialogFor(timeLeft: number): string {
   return "당신의 선택은 기록됩니다.";
 }
 
+const CONFIRM_MESSAGE: Record<Choice, string> = {
+  PRESS: "당신은 버튼을 눌렀습니다.",
+  DONT_PRESS: "당신은 버튼을 누르지 않았습니다.",
+};
+const CONFIRM_DISPLAY_MS = 5000;
+
 export function ButtonStage() {
   const router = useRouter();
   const [timeLeft, setTimeLeft] = useState(60);
   const [pressed, setPressed] = useState(false);
   const [shake, setShake] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const finishedRef = useRef(false);
 
   const { shown } = useTypewriter(dialogFor(timeLeft));
@@ -31,19 +38,26 @@ export function ButtonStage() {
     finishedRef.current = true;
     const { roundId } = getRoundWindow();
     recordChoice(roundId, choice);
-    setShake(true);
-    setFlash(true);
-    setTimeout(() => router.push("/result"), 550);
+    if (choice === "PRESS") {
+      setShake(true);
+      setFlash(true);
+    }
+    setConfirmMessage(CONFIRM_MESSAGE[choice]);
+    setTimeout(() => router.push("/result"), CONFIRM_DISPLAY_MS);
   };
 
   useEffect(() => {
-    if (pressed) return;
-    if (timeLeft <= 0) {
-      finish("DONT_PRESS");
-      return;
-    }
+    if (pressed || timeLeft <= 0) return;
     const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
+  }, [timeLeft, pressed]);
+
+  useEffect(() => {
+    if (pressed || timeLeft > 0) return;
+    // Deferred so the timeout branch calls finish() from a callback rather
+    // than synchronously during the effect body.
+    const id = setTimeout(() => finish("DONT_PRESS"), 0);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, pressed]);
 
@@ -100,6 +114,14 @@ export function ButtonStage() {
           ? "선택이 기록되었습니다. 되돌릴 수 없습니다."
           : "누르거나, 아무것도 하지 마세요"}
       </div>
+
+      {confirmMessage && (
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 px-8">
+          <DialogBox className="text-center text-xl">
+            {confirmMessage}
+          </DialogBox>
+        </div>
+      )}
     </div>
   );
 }

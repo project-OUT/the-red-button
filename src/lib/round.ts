@@ -10,7 +10,7 @@ function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-/** Monday 00:00 -> Sunday 23:59:59, results reveal Sunday 20:00. */
+/** Monday 00:00 -> Sunday 19:59, results reveal Sunday 20:00. */
 export function getRoundWindow(now: Date = new Date()): RoundWindow {
   const day = now.getDay(); // 0 = Sun .. 6 = Sat
   const diffToMonday = day === 0 ? 6 : day - 1;
@@ -22,7 +22,7 @@ export function getRoundWindow(now: Date = new Date()): RoundWindow {
   const sunday = new Date(periodStart);
   sunday.setDate(periodStart.getDate() + 6);
 
-  const periodEnd = atTime(sunday, 23, 59, 59, 999);
+  const periodEnd = atTime(sunday, 19, 59, 59, 999);
   const revealAt = atTime(sunday, 20, 0, 0);
 
   const roundId = `${periodStart.getFullYear()}${pad(periodStart.getMonth() + 1)}${pad(periodStart.getDate())}`;
