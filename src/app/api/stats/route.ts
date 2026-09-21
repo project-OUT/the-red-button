@@ -21,5 +21,12 @@ export async function GET() {
     dontPressCount: Number(row.dont_press_count),
   };
 
-  return NextResponse.json(stats);
+  // Aggregate counts don't need per-request freshness: let Vercel's edge
+  // cache absorb repeated hits (e.g. everyone opening /result at once)
+  // instead of re-querying Supabase for each one.
+  return NextResponse.json(stats, {
+    headers: {
+      "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+    },
+  });
 }
