@@ -48,6 +48,17 @@ export function getRoundWindow(now: Date = new Date()): RoundWindow {
 }
 
 export function isRevealed(window: RoundWindow, now: Date = new Date()): boolean {
+  // Test-only escape hatch: set TEST_REVEAL_OVERRIDE_AT (an ISO timestamp,
+  // server env var only) to preview the reveal transition without waiting
+  // for the real Sunday 20:00 KST boundary. Unset in normal operation, so
+  // this branch never runs. Remove this env var when done testing.
+  const overrideAt = process.env.TEST_REVEAL_OVERRIDE_AT;
+  if (overrideAt) {
+    const overrideDate = new Date(overrideAt);
+    if (!Number.isNaN(overrideDate.getTime())) {
+      return now.getTime() >= overrideDate.getTime();
+    }
+  }
   return now.getTime() >= window.revealAt.getTime();
 }
 
